@@ -1,6 +1,6 @@
 # Multi-Cloud MLOps Pipeline: Telco Churn on Databricks and AWS
 
-An end-to-end MLOps pipeline that trains, registers, gates, serves, and monitors a customer churn model. Training, tracking, and the model registry live on **Databricks** (MLflow and Unity Catalog). The same approved model is served on **Databricks Model Serving** and on **AWS ECS Fargate**, and a scheduled-ready Databricks Job retrains it automatically when drift is detected.
+An end-to-end MLOps pipeline that trains, registers, gates, serves, and monitors a customer churn model. Training, tracking, and the model registry live on **Databricks** (MLflow and Unity Catalog). The same approved model is served on **Databricks Model Serving** and on **AWS ECS Fargate**, and a Databricks Job retrains it automatically when drift is detected. The job is defined as code in a Databricks bundle and deployed by GitHub Actions.
 
 ## Architecture
 
@@ -65,6 +65,16 @@ The drifted batch is simulated: test customers with a 25% price increase and 40%
 
 ![Promotion log](docs/images/promotion_log.png)
 
+## CI/CD
+
+Every push to `main` that touches the notebooks, serving code, or `databricks.yml` runs a GitHub Actions workflow: a syntax check, then `databricks bundle validate` and `databricks bundle deploy`. The first deploy completed in 23 seconds.
+
+![GitHub Actions deploy](docs/images/ci_deploy.png)
+
+The deployed job is managed entirely from the repository (Declarative Automation Bundles), and its first run succeeded in 2 minutes 18 seconds.
+
+![Bundle-deployed job](docs/images/bundle_job.png)
+
 ## How it works
 
 | Step | Notebook | What it does |
@@ -86,7 +96,7 @@ serving/
   fetch_model.py            Pulls the current champion from Unity Catalog
   Dockerfile
   requirements-serve.txt    Pinned to the training environment
-databricks.yml              The job defined as a Databricks Asset Bundle
+databricks.yml              The job defined as code (Databricks bundle)
 .github/workflows/deploy.yml  Syntax check, then bundle validate and deploy
 docs/images/                Pipeline run screenshots
 ```
@@ -120,4 +130,4 @@ Push the image to ECR and run it as an ECS Fargate service (0.5 vCPU, 1 GB) with
 
 ## Stack
 
-Databricks (Delta Lake, Unity Catalog, MLflow, Model Serving, Jobs, Asset Bundles) · scikit-learn · PySpark · pandas · FastAPI · Docker · AWS (ECR, ECS Fargate, CloudWatch) · GitHub Actions
+Databricks (Delta Lake, Unity Catalog, MLflow, Model Serving, Jobs, Declarative Automation Bundles) · scikit-learn · PySpark · pandas · FastAPI · Docker · AWS (ECR, ECS Fargate, CloudWatch) · GitHub Actions
