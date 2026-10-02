@@ -1,0 +1,45 @@
+bundle:
+  name: telco-churn-mlops
+
+resources:
+  jobs:
+    telco_churn_pipeline:
+      name: telco-churn-pipeline
+      tasks:
+        - task_key: data_prep
+          notebook_task:
+            notebook_path: ./notebooks/01_data_prep.py
+
+        - task_key: drift_check
+          depends_on:
+            - task_key: data_prep
+          notebook_task:
+            notebook_path: ./notebooks/05_drift.py
+            base_parameters:
+              batch: drifted
+
+        - task_key: check_retrain
+          depends_on:
+            - task_key: drift_check
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.drift_check.values.retrain_needed}}"
+            right: "true"
+
+        - task_key: train
+          depends_on:
+            - task_key: check_retrain
+              outcome: "true"
+          notebook_task:
+            notebook_path: ./notebooks/02_train.py
+
+        - task_key: promote
+          depends_on:
+            - task_key: train
+          notebook_task:
+            notebook_path: ./notebooks/03_promote.py
+
+targets:
+  dev:
+    mode: development
+    default: true
